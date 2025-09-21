@@ -1,26 +1,67 @@
 (function () {
-  const SELECTOR = '[data-testid="stop-button"],[data-testid="composer-stop-button"]';
-  let was = false;   // 直前の生成状態
-  let arm = false;   // 通知許可フラグ（1回の生成サイクルにつき1回）
-  let timer = null;  // setInterval のID
+  const SELECTOR =
+    '[data-testid="stop-button"],[data-testid="composer-stop-button"]';
+  const SEND_SELECTOR =
+    '[data-testid="send-button"],[data-testid="composer-send-button"]';
+
+  let was = false; // 直前の生成状態
+  let recorded = false; // この生成サイクルで pending-add を送ったか
+  let timer = null;
   let enabled = true;
 
-  function gen() {
-    return !!document.querySelector(SELECTOR);
+  const gen = () => !!document.querySelector(SELECTOR);
+
+  // --- 送信トリガー（クリック） ---
+  document.addEventListener(
+    'click',
+    e => {
+      const btn = e.target?.closest?.(SEND_SELECTOR);
+      if (!btn) return;
+      chrome.runtime.sendMessage({ type: 'pending-add' });
+      recorded = true;
+    },
+    true,
+  );
+
+  // --- 送信トリガー（Enter; IME中は除外） ---
+  document.addEventListener(
+    'keydown',
+    e => {
+      if (e.isComposing) return;
+      if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey)
+        return;
+      const active = document.activeElement;
+      if (
+        active &&
+        (active.tagName === 'TEXTAREA' ||
+          active.getAttribute('contenteditable') === 'true')
+      ) {
+        chrome.runtime.sendMessage({ type: 'pending-add' });
+        recorded = true;
+      }
+    },
+    true,
+  );
+
+  function notifyDone() {
+    chrome.runtime.sendMessage({ type: 'notify', title: 'ChatGPT 返答が完了' });
   }
 
-  function notify() {
-    try {
-      chrome.runtime.sendMessage({ type: 'notify', title: 'ChatGPT 返答が完了' }, () => {});
-    } catch (_) {}
-  }
-
+  // --- ポーリングで生成状態を監視（フォールバック含む） ---
   function tick() {
     const now = gen();
-    if (now && !was) arm = true;               // 生成開始
-    if (!now && was && arm) {                  // 生成完了
-      notify();
-      arm = false;
+    if (now && !was) {
+      // 生成開始。送信検知を取りこぼした場合のみカウント追加。
+      if (!recorded) {
+        chrome.runtime.sendMessage({ type: 'pending-add' });
+        recorded = true;
+      }
+    }
+    if (!now && was) {
+      // 生成完了
+      chrome.runtime.sendMessage({ type: 'pending-done' });
+      notifyDone();
+      recorded = false;
     }
     was = now;
   }
@@ -28,40 +69,29 @@
   function start() {
     if (timer) return;
     timer = setInterval(tick, 900);
-    // 初期状態の把握
     was = gen();
-    arm = false;
-    console.debug('[ChatGPT 完了通知] 監視開始');
+    recorded = false;
   }
-
   function stop() {
     if (!timer) return;
     clearInterval(timer);
     timer = null;
     was = false;
-    arm = false;
-    console.debug('[ChatGPT 完了通知] 監視停止');
+    recorded = false;
   }
-
   function applyEnabled(flag) {
     enabled = !!flag;
-    if (enabled) start(); else stop();
+    if (enabled) start();
+    else stop();
   }
 
-  // 初期化（保存された設定を取得）
-  chrome.storage.local.get({ enabled: true }, ({ enabled }) => applyEnabled(enabled));
-
-  // 設定変更を監視
+  chrome.storage.local.get({ enabled: true }, ({ enabled }) =>
+    applyEnabled(enabled),
+  );
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && 'enabled' in changes) {
+    if (area === 'local' && 'enabled' in changes)
       applyEnabled(changes.enabled.newValue);
-    }
   });
 
-  // ポップアップからの疎通確認に応答
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg && msg.type === 'ping') {
-      sendResponse({ ok: true, enabled });
-    }
-  });
+  // 既存の ping/probe ハンドラは不要。残しても害はないが、バッジは常に数字のみ。
 })();
