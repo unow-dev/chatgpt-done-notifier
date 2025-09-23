@@ -1,11 +1,13 @@
 import type { MsgC2B, MsgB2C, MsgPopupToBG, ProbeStatusRes } from '../shared/messages';
 import { queueAdd, queueDone, queueDropByTab, queueLoad, pruneOld, addIfMissing, clearTabAll, getPendingDetailed, queueRemoveByCid } from './queue';
 import { createDoneNotification, attachNotificationClick } from './notify';
+import { initBadgeWiring } from './badge';
 import { focus } from './focus';
 
 chrome.runtime.onInstalled.addListener(() => { void queueLoad(); pruneSchedule(); });
 chrome.runtime.onStartup?.addListener(() => { void queueLoad(); pruneSchedule(); });
 attachNotificationClick();
+initBadgeWiring();
 
 // C2B: ACK 応答
 chrome.runtime.onMessage.addListener((msg: MsgC2B | MsgPopupToBG, sender, sendResponse) => {

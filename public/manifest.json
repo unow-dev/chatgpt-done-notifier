@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT 完了通知",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "ChatGPT の返答完了を検知し、通知クリックで当該タブへ移動。バッジは完了待ち件数を表示。アイコンから完了待ち一覧を表示。",
   "permissions": ["storage", "notifications", "tabs", "windows", "alarms"],
   "host_permissions": [
