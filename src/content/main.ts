@@ -1,45 +1,40 @@
 import { POLL_MS } from '../shared/constants';
-import { genCid } from '../shared/util';
+import { genCid, sendWithRetry } from '../shared/util';
 import { isGenerating, attachSendDetectors } from './detector';
 import { initialState } from './state';
-import type { MsgC2B } from '../shared/messages';
+import type { MsgC2B, MsgB2C, ProbeStatusRes } from '../shared/messages';
 
 const state = initialState();
 let timer: number | null = null;
 
-function send(msg: MsgC2B) { chrome.runtime.sendMessage(msg); }
-
-function ensureAddPending() {
+async function addOnce() {
   if (!state.cid) state.cid = genCid();
-  send({ type: 'pending-add', cid: state.cid });
+  await sendWithRetry<MsgC2B>({ type: 'pending-add', cid: state.cid }, 3, 400);
+}
+async function doneOnce() {
+  if (!state.cid) return;
+  const cid = state.cid;
+  await sendWithRetry<MsgC2B>({ type: 'pending-done', cid }, 3, 400);
+  await sendWithRetry<MsgC2B>({ type: 'notify', cid, title: 'ChatGPT 返答が完了' }, 2, 300);
+  state.cid = null;
 }
 
 function onTick() {
   const now = isGenerating();
-  if (now && !state.was) {
-    if (!state.cid) ensureAddPending();
-  }
-  if (!now && state.was) {
-    if (state.cid) {
-      send({ type: 'pending-done', cid: state.cid });
-      send({ type: 'notify', cid: state.cid, title: 'ChatGPT 返答が完了' });
-      state.cid = null;
-    }
-  }
+  if (now && !state.was) { if (!state.cid) void addOnce(); }
+  if (!now && state.was) { void doneOnce(); }
   state.was = now;
 }
 
-function start() {
-  if (timer) return;
-  timer = setInterval(onTick, POLL_MS) as unknown as number;
-}
-
 (function init() {
-  attachSendDetectors(() => {
-    if (!state.cid) {
-      state.cid = genCid();
-      send({ type: 'pending-add', cid: state.cid });
+  attachSendDetectors(() => { if (!state.cid) void addOnce(); });
+  if (!timer) timer = setInterval(onTick, POLL_MS) as unknown as number;
+
+  // probe-status への応答（BGのリコンシリエーション）
+  chrome.runtime.onMessage.addListener((msg: MsgB2C, _sender, sendResponse) => {
+    if (msg?.type === 'probe-status') {
+      const res: ProbeStatusRes = { generating: isGenerating(), cid: state.cid };
+      sendResponse(res); return true;
     }
   });
-  start();
 })();

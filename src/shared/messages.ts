@@ -4,6 +4,8 @@ export type MsgC2B =
   | { type: 'pending-done'; cid: string }
   | { type: 'notify'; cid: string; title?: string; message?: string };
 
-// Background → Content（現状未使用だが拡張余地を残す）
+// Background → Content
 export type MsgB2C =
-  | { type: 'probe' };
+  | { type: 'probe-status' };  // 現在の生成状態とcidの問い合わせ
+
+export type ProbeStatusRes = { generating: boolean; cid: string | null };
