@@ -6,7 +6,6 @@ const dist = 'dist';
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
-// public 配下をコピー
 function copyDir(src, dst){
   fs.mkdirSync(dst, { recursive: true });
   for (const ent of fs.readdirSync(src, { withFileTypes: true })){
@@ -21,14 +20,15 @@ copyDir('public', dist);
 await esbuild.build({
   entryPoints: {
     'background': 'src/background/main.ts',
-    'content': 'src/content/main.ts'
+    'content': 'src/content/main.ts',
+    'popup': 'src/popup/main.ts'
   },
   bundle: true,
   format: 'iife',
   target: 'es2020',
   minify: true,
   sourcemap: true,
-  outdir: dist,
+  outdir: dist
 });
 
 console.log('✓ build: dist/ 生成完了');
