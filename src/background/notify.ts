@@ -1,6 +1,12 @@
 import { focus } from './focus';
 
-export function createDoneNotification(tabId: number | undefined, windowId: number | undefined, cid: string, title?: string, message?: string) {
+export function createDoneNotification(
+  tabId: number | undefined,
+  windowId: number | undefined,
+  cid: string,
+  title?: string,
+  message?: string
+) {
   const nid = `done:cid=${cid}:t=${tabId ?? -1}:w=${windowId ?? -1}:${Date.now()}`;
   chrome.notifications.create(nid, {
     type: 'basic',
