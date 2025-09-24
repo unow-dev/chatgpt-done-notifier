@@ -1,4 +1,5 @@
 import type { MsgPopupToBG, PendingSnapshot } from '../shared/messages';
+import { loadConfig } from '../shared/config';
 
 function send<T extends MsgPopupToBG, R = any>(msg: T): Promise<R> {
   return new Promise((res) => chrome.runtime.sendMessage(msg, (x) => res(x)));
@@ -8,6 +9,7 @@ function fmtAge(ms: number){
   const m = Math.floor(s/60); if (m < 60) return m + 'm';
   const h = Math.floor(m/60); return h + 'h';
 }
+
 async function refresh(){
   const tbody = document.getElementById('rows')!;
   tbody.innerHTML = '<tr><td colspan="6" class="muted">読み込み中…</td></tr>';
@@ -27,6 +29,7 @@ async function refresh(){
       </td>
     </tr>`).join('');
 }
+
 function onClick(e: Event){
   const t = e.target as HTMLElement; if (!t || t.tagName !== 'BUTTON') return;
   const act = t.getAttribute('data-act');
@@ -38,13 +41,22 @@ function onClick(e: Event){
     send({ type: 'pending-remove', cid }).then(refresh);
   }
 }
-function onToolbar(){
-  (document.getElementById('refresh')!).addEventListener('click', refresh);
-  (document.getElementById('reconcile')!).addEventListener('click', () => send({ type: 'reconcile-now' }).then(refresh));
-  (document.getElementById('prune')!).addEventListener('click', () => send({ type: 'prune-now' }).then(refresh));
+
+async function initToolbar(){
+  const toolbar = document.getElementById('toolbar') as HTMLElement;
+  const cfg = await loadConfig();
+  if (cfg.debug) {
+    toolbar.style.display = 'flex'; // 表示
+    (document.getElementById('refresh')!).addEventListener('click', refresh);
+    (document.getElementById('reconcile')!).addEventListener('click', () => send({ type: 'reconcile-now' }).then(refresh));
+    (document.getElementById('prune')!).addEventListener('click', () => send({ type: 'prune-now' }).then(refresh));
+  } else {
+    toolbar.style.display = 'none';  // 非表示（デフォルト）
+  }
 }
+
 (function init(){
   document.getElementById('rows')!.addEventListener('click', onClick);
-  onToolbar();
-  refresh();
+  void initToolbar();
+  void refresh();
 })();
