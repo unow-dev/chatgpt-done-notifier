@@ -47,6 +47,13 @@ export async function getPendingDetailed() {
       return { cid: x.cid, tabId: x.tabId, windowId: x.windowId, url: x.url, title: undefined, ageMs: Date.now() - x.sentAt };
     }
   }));
+  
+  // 存在しないタブはここで掃除
+  for (const row of out) {
+    if (!row.url && !row.title) {
+      try { chrome.tabs.get(row.tabId).catch(() => queueDropByTab(row.tabId)); } catch {}
+    }
+  }
   return out;
 }
 export function queueRemoveByCid(cid: string) {
