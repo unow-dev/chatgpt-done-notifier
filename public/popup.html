@@ -7,7 +7,7 @@
   <style>
     body{font:13px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:12px; width:560px;}
     h1{font-size:14px; margin:0 0 8px;}
-    .toolbar{display:flex; gap:8px; align-items:center; margin-bottom:8px}
+    .toolbar{display:none; gap:8px; align-items:center; margin-bottom:8px} /* デフォルト非表示 */
     button{padding:6px 10px; border-radius:8px; border:1px solid #ddd; background:#fafafa; cursor:pointer}
     button.danger{background:#fee2e2; border-color:#fecaca}
     table{width:100%; border-collapse:collapse}
@@ -20,7 +20,7 @@
 </head>
 <body>
   <h1>完了待ちリスト</h1>
-  <div class="toolbar">
+  <div class="toolbar" id="toolbar">
     <button id="refresh">再取得</button>
     <button id="reconcile">Reconcile</button>
     <button id="prune">Prune</button>

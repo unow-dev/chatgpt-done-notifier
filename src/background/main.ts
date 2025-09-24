@@ -1,8 +1,12 @@
 import type { MsgC2B, MsgB2C, MsgPopupToBG, ProbeStatusRes } from '../shared/messages';
+import { loadConfig } from '../shared/config';
 import { queueAdd, queueDone, queueDropByTab, queueLoad, pruneOld, addIfMissing, clearTabAll, getPendingDetailed, queueRemoveByCid } from './queue';
 import { createDoneNotification, attachNotificationClick } from './notify';
 import { initBadgeWiring } from './badge';
 import { focus } from './focus';
+
+let DEBUG = false;
+loadConfig().then(c => { DEBUG = !!c.debug; }).catch(() => { DEBUG = false; });
 
 chrome.runtime.onInstalled.addListener(() => { void queueLoad(); pruneSchedule(); });
 chrome.runtime.onStartup?.addListener(() => { void queueLoad(); pruneSchedule(); });
