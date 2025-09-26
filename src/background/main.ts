@@ -1,4 +1,5 @@
 import type { MsgC2B, MsgB2C, MsgPopupToBG, ProbeStatusRes } from '../shared/messages';
+
 import { loadConfig } from '../shared/config';
 import { queueAdd, queueDone, queueDropByTab, queueLoad, pruneOld, addIfMissing, clearTabAll, getPendingDetailed, queueRemoveByCid } from './queue';
 import { createDoneNotification, attachNotificationClick } from './notify';
